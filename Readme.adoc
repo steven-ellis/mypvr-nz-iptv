@@ -1,0 +1,28 @@
+= Freeview NZ over IPTV 
+
+Note we can't use the Matt Huissman masked URLs with MythTV's
+IPVT streamer at present - see TRAC ticket #1093
+
+Hence we utilse the EXTERNAL recorder option in MythTV
+and configure youtube-dl to proxy the stream for the mythtv-backend.
+
+== Initial Setup
+
+Copy the following files to your MythTV Backend Server
+
+- link:external/youtube-dl-nz.conf[youtube-dl-nz.conf] grabber configuration
+- link:external/youtube-dl-nz-channels.conf[youtube-dl-nz-channels.conf] NZ channel map
+
+For my environment I use the location
+
+ - /usr/local/share/myPVR/iptv/
+
+== Primary base IPTV URLs
+We can pull the latest RAW URLs from Matt's git repo
+
+ - http://i.mjh.nz/nz/raw-tv.m3u8
+ - http://i.mjh.nz/au/Sydney/raw-tv.m3u8
+
+== Additional Sources
+
+ - APSattv - https://www.apsattv.com/kiwitv2.m3u
