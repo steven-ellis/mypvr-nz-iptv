@@ -1,21 +1,53 @@
 = Freeview NZ over IPTV 
 
 Note we can't use the Matt Huissman masked URLs with MythTV's
-IPVT streamer at present - see TRAC ticket #1093
+built in IPTV streamer at present
 
-Hence we utilse the EXTERNAL recorder option in MythTV
+Reference
+
+- OpenMedia's TRAC ticket #1093
+- MythTV link:https://code.mythtv.org/trac/ticket/13608[#13608 IPTV Streaming issues with AES-128 encryption]
+
+Hence we utilse the 
+link:https://www.mythtv.org/wiki/ExternalRecorder#Using_the_.22Generic.22_External_Recorder[Generic External Recorder] option in MythTV
 and configure youtube-dl to proxy the stream for the mythtv-backend.
+
+The External Recorder also proves to be more stable with feeds that include multiple bitrates and resolutions.
 
 == Initial Setup
 
 Copy the following files to your MythTV Backend Server
 
 - link:external/youtube-dl-nz.conf[youtube-dl-nz.conf] grabber configuration
-- link:external/youtube-dl-nz-channels.conf[youtube-dl-nz-channels.conf] NZ channel map
+- link:external/youtube-dl-nz-channels.conf[youtube-dl-nz-channels.conf] NZ channel map (using channels 201-2xx)
 
 For my environment I use the location
 
  - /usr/local/share/myPVR/iptv/
+
+You then need to add a new link:https://www.mythtv.org/wiki/ExternalRecorder#Using_the_.22Generic.22_External_Recorder[Generic External Recorder]
+as a virtual capture card. You need to make sure the external recorder definition points at the base config, and that the channels definition
+is in the same directory.
+
+[source,bash]
+----
+/usr/bin/mythexternrecorder --conf /usr/local/share/myPVR/iptv/youtube-dl-nz.conf
+----
+
+I also recommend adding a new video source which can pull down Matt's EPG feed.
+
+Once an the new input has been added you can run a channel scan which will pull in the supplied
+link:external/youtube-dl-nz-channels.conf[NZ channel map]
+
+
+== Issue / Gotchas
+
+Matt's NZ EPG feed includes a full set of NZ broadcast channels, including +1 channels.
+The way mythfilldatabase works it end up creating additional channels associated
+with the video source which we need to hide. If we don't hide these they show up in
+the channel list and the scheduler might attempt to use them.
+
+Currenty I hide these channels with a small piece of SQL
 
 == Primary base IPTV URLs
 We can pull the latest RAW URLs from Matt's git repo
