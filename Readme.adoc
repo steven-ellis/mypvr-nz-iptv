@@ -39,6 +39,16 @@ I also recommend adding a new video source which can pull down Matt's EPG feed.
 Once an the new input has been added you can run a channel scan which will pull in the supplied
 link:external/youtube-dl-nz-channels.conf[NZ channel map]
 
+[source,sql]
+----
+-- First find out if we've got any channels that shouldn't be visible
+-- They usually show up with an non-zero atsc_major_chan value
+SELECT * FROM `channel` where atsc_major_chan!=0 and VISIBLE=1
+
+-- I recommend you make sure you've got the correct sourceid before running
+
+UPDATE `channel` SET visible=0 where sourceid=<YOUR_SOURCE_ID> AND atsc_major_chan!=0
+----
 
 == Issue / Gotchas
 
