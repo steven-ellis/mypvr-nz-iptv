@@ -41,13 +41,23 @@ link:external/youtube-dl-nz-channels.conf[NZ channel map]
 
 == Internal IPTV Recorder Setup
 
-Copy the following files to your MythTV Backend Server
+Copy the following NZ IPTV playlist to your MythTV Backend Server - this uses channel numbers 901-9xx.
 
 - link:internal/iptv-nz.m3u8[iptv-nz.m3u8] MythTV compatible m3u8
 
 For my environment I use the location
 
 - /usr/local/share/myPVR/iptv/
+
+You then need to add a new link:https://www.mythtv.org/wiki/IPTV_Encoders_as_a_Capture_Device[IP/TV Network Recorder]
+as a link:https://www.mythtv.org/wiki/IPTV_Encoders_as_a_Capture_Device#Add_the_IP.2FTV_Network_Recorder[new *IPTV Recorder* capture card],
+and specify the local location of your m3u8 file, or you can access the RAW hosted on github via
+
+- https://raw.githubusercontent.com/steven-ellis/mypvr-nz-iptv/main/internal/iptv-nz.m3u8[https://raw.githubusercontent.com/steven-ellis/mypvr-nz-iptv/main/internal/iptv-nz.m3u8]
+
+== EPG Feed
+
+*TBC*
 
 == Issue / Gotchas
 
