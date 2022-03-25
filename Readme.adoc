@@ -1,6 +1,6 @@
 = Freeview NZ over IPTV 
 
-Note we can't use the Matt Huissman masked URLs with MythTV's
+Note we can't reliably use the Matt Huissman masked URLs with MythTV's
 built in IPTV streamer at present
 
 Reference
@@ -8,13 +8,13 @@ Reference
 - OpenMedia's TRAC ticket #1093
 - MythTV link:https://code.mythtv.org/trac/ticket/13608[#13608 IPTV Streaming issues with AES-128 encryption]
 
-Hence we utilse the 
+Hence I personally utilse the 
 link:https://www.mythtv.org/wiki/ExternalRecorder#Using_the_.22Generic.22_External_Recorder[Generic External Recorder] option in MythTV
 and configure youtube-dl to proxy the stream for the mythtv-backend.
 
 The External Recorder also proves to be more stable with feeds that include multiple bitrates and resolutions.
 
-== Initial Setup
+== External Recorder Setup
 
 Copy the following files to your MythTV Backend Server
 
@@ -23,7 +23,7 @@ Copy the following files to your MythTV Backend Server
 
 For my environment I use the location
 
- - /usr/local/share/myPVR/iptv/
+- /usr/local/share/myPVR/iptv/
 
 You then need to add a new link:https://www.mythtv.org/wiki/ExternalRecorder#Using_the_.22Generic.22_External_Recorder[Generic External Recorder]
 as a virtual capture card. You need to make sure the external recorder definition points at the base config, and that the channels definition
@@ -39,6 +39,26 @@ I also recommend adding a new video source which can pull down Matt's EPG feed.
 Once an the new input has been added you can run a channel scan which will pull in the supplied
 link:external/youtube-dl-nz-channels.conf[NZ channel map]
 
+== Internal IPTV Recorder Setup
+
+Copy the following files to your MythTV Backend Server
+
+- link:internal/iptv-nz.m3u8[iptv-nz.m3u8] MythTV compatible m3u8
+
+For my environment I use the location
+
+- /usr/local/share/myPVR/iptv/
+
+== Issue / Gotchas
+
+Matt's NZ EPG feed includes a full set of NZ broadcast channels, including +1 channels.
+The way mythfilldatabase works it end up creating additional channels associated
+with the video source which we need to hide. If we don't hide these they show up in
+the channel list and the scheduler might attempt to use them.
+
+Currenty I hide these channels with a small piece of SQL. We can't remove the channels
+as they'll get re-added when the epg grabber re-runs.
+
 [source,sql]
 ----
 -- First find out if we've got any channels that shouldn't be visible
@@ -49,15 +69,6 @@ SELECT * FROM `channel` where atsc_major_chan!=0 and VISIBLE=1
 
 UPDATE `channel` SET visible=0 where sourceid=<YOUR_SOURCE_ID> AND atsc_major_chan!=0
 ----
-
-== Issue / Gotchas
-
-Matt's NZ EPG feed includes a full set of NZ broadcast channels, including +1 channels.
-The way mythfilldatabase works it end up creating additional channels associated
-with the video source which we need to hide. If we don't hide these they show up in
-the channel list and the scheduler might attempt to use them.
-
-Currenty I hide these channels with a small piece of SQL
 
 == Primary base IPTV URLs
 We can pull the latest RAW URLs from Matt's git repo

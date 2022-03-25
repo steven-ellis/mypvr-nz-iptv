@@ -1,0 +1,110 @@
+#EXTM3U
+#EXTINF:-1,901 - TVNZ 1
+#EXTMYTHTV:xmltvid=tv.9
+http://livestreams.e-cast.co.nz/tv1.m3u8
+##https://d1irqd0o6b6kl5.cloudfront.net/master.m3u8
+
+#EXTINF:-1,902 - TVNZ 2
+#EXTMYTHTV:xmltvid=tv.10
+http://livestreams.e-cast.co.nz/tv2.m3u8
+##https://d3vsmj0a4dgta4.cloudfront.net/master.m3u8 
+
+#EXTINF:-1,903 - Three
+#EXTMYTHTV:xmltvid=tv.11
+https://three-livestream.fullscreen.nz/index.m3u8
+##http://i.mjh.nz/nz/tv.11.m3u8
+
+#EXTINF:-1,904 - Bravo
+#EXTMYTHTV:xmltvid=tv.12
+https://bravo-livestream.fullscreen.nz/index.m3u8
+##http://i.mjh.nz/nz/tv.12.m3u8
+
+#EXTINF:-1,905 - Maori
+#EXTMYTHTV:xmltvid=tv.13
+https://bcsecurelivehls-i.akamaihd.net//hls/live/720612/1614493167001_1/master_iPad1080p.m3u8
+
+##EXTINF:-1,907 - TV 2+1 Home learning TV
+##EXTMYTHTV:xmltvid=tv.14
+##https://livestreams.e-cast.co.nz/tv2p1.m3u8
+##http://i.mjh.nz/nz/tv.14.m3u8
+##https://d1xgtxe1r9qidi.cloudfront.net/master.m3u8
+###EXTINF:-1 tvg-id="tv.14" tvg-logo="http://i.mjh.nz/nz/images/tv.home.learning.png" tvg-chno="7",Home Learning TV
+
+#EXTINF:-1,908 - eden
+#EXTMYTHTV:xmltvid=tv.73
+​https://eden-livestream.fullscreen.nz/index.m3u8 
+#https://i.mjh.nz/nz/tv.73.m3u8
+
+#EXTINF:-1,910 - PRIME
+#EXTMYTHTV:xmltvid=tv.28
+https://livestreams.e-cast.co.nz/prime/prime_1000k.m3u8
+##https://primetv-prod.akamaized.net/v1/prime-freeview-aes128.m3u8
+
+#EXTINF:-1,917 - Edge TV
+#EXTMYTHTV:xmltvid=tv.51
+https://livestreamdirect-edgetv.mediaworks.nz/edgetv.m3u8
+
+###EXTINF:-1,912 - Choice
+###EXTMYTHTV:xmltvid=tv.37
+##https://livestreams.e-cast.co.nz/choicetv.m3u8
+
+#EXTINF:-1,914 - Rush
+#EXTMYTHTV:xmltvid=tv.72
+https://rush-livestream.fullscreen.nz/index.m3u8 
+#https://i.mjh.nz/nz/tv.72.m3u8
+
+#EXTINF:-1,906 - DUKE
+#EXTMYTHTV:xmltvid=tv.55
+http://livestreams.e-cast.co.nz/duke.m3u8
+##https://d1nyrbw5nj219v.cloudfront.net/master_5.m3u8
+
+#EXTINF:-1,918 - Breeze TV
+#EXTMYTHTV:xmltvid=tv.68
+https://livestreamdirect-breezetv.mediaworks.nz/breezetv.m3u8
+#https://d23rkcjsob12t4.cloudfront.net/out/v1/70f7690480c34ead86b9ef1e840cd585/index.m3u8
+##EXTINF:-1 tvg-id="tv.68" tvg-logo="http://i.mjh.nz/nz/images/tv.68.png" tvg-chno="14",BREEZE TV
+##http://i.mjh.nz/nz/tv.68.m3u8
+
+#EXTINF:-1,915 - Te Reo
+#EXTMYTHTV:xmltvid=tv.20
+https://bcsecurelivehls-i.akamaihd.net//hls/live/720613/1614493167001_2/master.m3u8
+
+#EXTINF:-1,920 - Al Jazeera
+#EXTMYTHTV:xmltvid=tv.46
+https://live-hls-web-aje.getaj.net/AJE/index.m3u8
+
+#EXTINF:-1,919 - HGTV
+#EXTMYTHTV:xmltvid=tv.58
+https://livestreams.e-cast.co.nz/hgtv.m3u8
+
+##EXTINF:-1,920 - TVSN Shopping
+##EXTMYTHTV:xmltvid=tv.45
+##https://tvsn-i.akamaihd.net/hls/live/261837/tvsn_nz/tvsn_nz.m3u8
+
+#EXTINF:-1,925 - Shine
+#EXTMYTHTV:xmltvid=tv.7
+https://rhemamedia.global.ssl.fastly.net/ShineTV_Legacy/high/playlist.m3u8
+
+#EXTINF:-1,931 - Parliament TV
+#EXTMYTHTV:xmltvid=tv.18
+https://streaming.kordia.net.nz/out/u/ptv_houseaudio.m3u8
+###https://i.mjh.nz/nz/tv.18.m3u8
+
+#EXTINF:-1,936 - APNA Television
+#EXTMYTHTV:xmltvid=tv.49
+https://livestreams.e-cast.co.nz/apnatv.m3u8
+###https://i.mjh.nz/nz/tv.49.m3u8
+
+#EXTINF:-1,941 - Wairarapa TV
+#EXTMYTHTV:xmltvid=tv.60
+https://stream.wairarapatv.co.nz/playlist.m3u8
+###https://i.mjh.nz/nz/tv.60.m3u8
+
+#EXTINF:-1,950 - Kordia TV
+#EXTMYTHTV:xmltvid=tv.66
+http://i.mjh.nz/nz/tv.66.m3u8
+
+#EXTINF:-1,951 - Redbull TV
+#EXTMYTHTV:xmltvid=tv.redbull.tv
+https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8
+###https://i.mjh.nz/nz/tv.redbull.tv.m3u8
