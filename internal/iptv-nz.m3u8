@@ -3,11 +3,13 @@
 #EXTMYTHTV:xmltvid=tv.9
 http://livestreams.e-cast.co.nz/tv1.m3u8
 ##https://d1irqd0o6b6kl5.cloudfront.net/master.m3u8
+##http://i.mjh.nz/nz/tv.9.m3u8
 
 #EXTINF:-1,902 - TVNZ 2
 #EXTMYTHTV:xmltvid=tv.10
 http://livestreams.e-cast.co.nz/tv2.m3u8
 ##https://d3vsmj0a4dgta4.cloudfront.net/master.m3u8 
+##http://i.mjh.nz/nz/tv.10.m3u8
 
 #EXTINF:-1,903 - Three
 #EXTMYTHTV:xmltvid=tv.11
@@ -32,17 +34,13 @@ https://bcsecurelivehls-i.akamaihd.net//hls/live/720612/1614493167001_1/master_i
 
 #EXTINF:-1,908 - eden
 #EXTMYTHTV:xmltvid=tv.73
-​https://eden-livestream.fullscreen.nz/index.m3u8 
+https://eden-livestream.fullscreen.nz/index.m3u8 
 #https://i.mjh.nz/nz/tv.73.m3u8
 
 #EXTINF:-1,910 - PRIME
 #EXTMYTHTV:xmltvid=tv.28
 https://livestreams.e-cast.co.nz/prime/prime_1000k.m3u8
 ##https://primetv-prod.akamaized.net/v1/prime-freeview-aes128.m3u8
-
-#EXTINF:-1,917 - Edge TV
-#EXTMYTHTV:xmltvid=tv.51
-https://livestreamdirect-edgetv.mediaworks.nz/edgetv.m3u8
 
 ###EXTINF:-1,912 - Choice
 ###EXTMYTHTV:xmltvid=tv.37
@@ -51,12 +49,18 @@ https://livestreamdirect-edgetv.mediaworks.nz/edgetv.m3u8
 #EXTINF:-1,914 - Rush
 #EXTMYTHTV:xmltvid=tv.72
 https://rush-livestream.fullscreen.nz/index.m3u8 
-#https://i.mjh.nz/nz/tv.72.m3u8
+##https://i.mjh.nz/nz/tv.72.m3u8
 
 #EXTINF:-1,906 - DUKE
 #EXTMYTHTV:xmltvid=tv.55
 http://livestreams.e-cast.co.nz/duke.m3u8
 ##https://d1nyrbw5nj219v.cloudfront.net/master_5.m3u8
+
+#EXTINF:-1,917 - Edge TV
+#EXTMYTHTV:xmltvid=tv.51
+https://livestreamdirect-edgetv.mediaworks.nz/edgetv.m3u8
+##http://i.mjh.nz/nz/tv.51.m3u8
+
 
 #EXTINF:-1,918 - Breeze TV
 #EXTMYTHTV:xmltvid=tv.68
@@ -69,13 +73,13 @@ https://livestreamdirect-breezetv.mediaworks.nz/breezetv.m3u8
 #EXTMYTHTV:xmltvid=tv.20
 https://bcsecurelivehls-i.akamaihd.net//hls/live/720613/1614493167001_2/master.m3u8
 
-#EXTINF:-1,920 - Al Jazeera
-#EXTMYTHTV:xmltvid=tv.46
-https://live-hls-web-aje.getaj.net/AJE/index.m3u8
-
 #EXTINF:-1,919 - HGTV
 #EXTMYTHTV:xmltvid=tv.58
 https://livestreams.e-cast.co.nz/hgtv.m3u8
+
+#EXTINF:-1,920 - Al Jazeera
+#EXTMYTHTV:xmltvid=tv.46
+https://live-hls-web-aje.getaj.net/AJE/index.m3u8
 
 ##EXTINF:-1,920 - TVSN Shopping
 ##EXTMYTHTV:xmltvid=tv.45
