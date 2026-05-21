@@ -10,633 +10,311 @@ import requests
 import xml.etree.ElementTree as ET
 
 
-#
-# DVB-I XML namespaces
-#
-NAMESPACES = {
-    "dvb": "urn:dvb:metadata:servicediscovery:2020",
-    "types": "urn:dvb:metadata:servicediscovery:2020:types",
-    "dvbi-types": "urn:dvb:metadata:servicediscovery:2020:types",
-    "mpeg7": "urn:tva:mpeg7:2008",
-    "xsi": "http://www.w3.org/2001/XMLSchema-instance",
-}
+# ----------------------------
+# Namespace-safe tag helper
+# ----------------------------
+def localname(tag):
+    return tag.split("}")[-1]
 
 
+def is_uri_tag(tag):
+    t = tag.lower()
+    return (
+        t.endswith("uri") or
+        t.endswith(":uri") or
+        localname(tag).lower() == "uri"
+    )
+
+
+# ----------------------------
+# Load XML (file or URL)
+# ----------------------------
 def load_xml(source):
-    """
-    Load XML from URL or local file.
-    """
-
     parsed = urlparse(source)
 
     if parsed.scheme in ("http", "https"):
-
-        response = requests.get(source, timeout=30)
-        response.raise_for_status()
-
-        return response.content
+        r = requests.get(source, timeout=30)
+        r.raise_for_status()
+        return r.content
 
     return Path(source).read_bytes()
 
 
+# ----------------------------
+# Sanitize tvg-id
+# ----------------------------
 def sanitize_tvg_id(text):
-    """
-    Generate IPTV-friendly tvg-id.
-    """
-
     text = text.lower().strip()
-
     text = re.sub(r"[^a-z0-9]+", "-", text)
-    text = re.sub(r"-+", "-", text)
-
     return text.strip("-")
 
 
-def get_first_text(parent, xpath):
-    """
-    Return first matching XML text.
-    """
-
-    elem = parent.find(xpath, NAMESPACES)
-
-    if elem is not None and elem.text:
-        return elem.text.strip()
-
-    return None
-
-
-def find_first_name(service, debug=False):
-    """
-    Locate best DVB-I service/channel name.
-    Prioritises ServiceName fields.
-    """
-
-    #
-    # Preferred tag order
-    #
-    preferred_tags = [
-        "ServiceName",
-        "Name",
-    ]
-
-    #
-    # Search recursively ignoring namespaces
-    #
-    for preferred in preferred_tags:
-
-        for elem in service.iter():
-
-            tag = elem.tag.split("}")[-1]
-
-            if tag != preferred:
-                continue
-
+# ----------------------------
+# Service Name
+# ----------------------------
+def find_service_name(service):
+    for elem in service.iter():
+        if localname(elem.tag) in ("ServiceName", "DisplayName", "Name"):
             if elem.text and elem.text.strip():
+                return elem.text.strip()
+    return "Unknown"
 
-                value = elem.text.strip()
 
-                if debug:
-                    print(
-                        f"[DEBUG] Found {preferred}: "
-                        f"{value}"
-                    )
+# ----------------------------
+# Logo (MediaUri image/png)
+# ----------------------------
+def find_logo(service):
+    fallback = ""
 
-                return value
+    for elem in service.iter():
 
-    if debug:
-        print("[DEBUG] No ServiceName found")
-
-    return "Unknown Channel"
-
-def build_lcn_table(root, debug=False):
-    """
-    Build mapping:
-        UniqueIdentifier -> channelNumber
-    """
-
-    lcn_map = {}
-
-    #
-    # Walk XML tree
-    #
-    for elem in root.iter():
-
-        tag = elem.tag.split("}")[-1]
-
-        #
-        # Match only LCN elements
-        #
-        if tag != "LCN":
+        if localname(elem.tag) != "MediaUri":
             continue
 
-        service_ref = None
-        channel_number = None
+        uri = (elem.text or "").strip()
+        if not uri:
+            continue
 
-        #
-        # Extract attributes
-        #
-        for attr_name, attr_value in elem.attrib.items():
+        ct = elem.attrib.get("contentType", "")
 
-            clean_attr = attr_name.split("}")[-1]
+        if ct == "image/png":
+            return uri
 
-            #
-            # serviceRef attribute
-            #
-            if clean_attr == "serviceRef":
+        if not fallback:
+            fallback = uri
 
-                service_ref = attr_value.strip()
+    return fallback
 
-            #
-            # channelNumber attribute
-            #
-            elif clean_attr == "channelNumber":
 
-                channel_number = attr_value.strip()
+# ----------------------------
+# LCN mapping
+# ----------------------------
+def build_lcn_table(root):
+    lcn_map = {}
 
-        #
-        # Store mapping
-        #
-        if service_ref and channel_number:
+    for elem in root.iter():
 
-            lcn_map[service_ref] = channel_number
+        if localname(elem.tag) != "LCN":
+            continue
 
-            if debug:
-                print(
-                    f"[DEBUG] LCN MAP: "
-                    f"{service_ref} -> {channel_number}"
-                )
+        service_ref = elem.attrib.get("serviceRef")
+        channel = elem.attrib.get("channelNumber")
+
+        if service_ref and channel:
+            lcn_map[service_ref] = channel
 
     return lcn_map
 
+
+# ----------------------------
+# STREAM RESOLVER (FINAL)
+# ----------------------------
 def find_stream_uri(service, debug=False):
-    """
-    DVB-I stream resolver (corrected for GetMeRadio + Freeview style feeds)
 
-    Supports:
-      - DASHDeliveryParameters (TV)
-      - HLS/other TV delivery blocks
-      - IdentifierBasedDeliveryParameters (Radio / audio)
+    instances = []
 
-    Radio rule:
-      contentType="audio/mpeg"
-    """
-
-    #
-    # 1. RADIO: IdentifierBasedDeliveryParameters
-    #
     for elem in service.iter():
+        if localname(elem.tag) == "ServiceInstance":
+            try:
+                priority = int(elem.attrib.get("priority", "999"))
+            except ValueError:
+                priority = 999
+            instances.append((priority, elem))
 
-        tag = elem.tag.split("}")[-1]
+    instances.sort(key=lambda x: x[0])
 
-        if tag != "IdentifierBasedDeliveryParameters":
-            continue
-
-        content_type = elem.attrib.get("contentType", "").strip()
+    for priority, instance in instances:
 
         if debug:
-            print(f"[DEBUG] IdentifierBasedDeliveryParameters contentType={content_type}")
+            print(f"\n[DEBUG] ServiceInstance priority={priority}")
 
-        #
-        # RADIO STREAM RULE (authoritative)
-        #
-        if content_type == "audio/mpeg":
+        # ----------------------
+        # 1. Direct audio (radio)
+        # ----------------------
+        for elem in instance.iter():
 
-            if elem.text and elem.text.strip():
+            if localname(elem.tag) == "IdentifierBasedDeliveryParameters":
 
-                uri = elem.text.strip()
+                if elem.text and "http" in elem.text:
 
-                if debug:
-                    print(f"[DEBUG] RADIO stream found: {uri}")
+                    uri = elem.text.strip()
 
-                return uri, "radio"
+                    if debug:
+                        print(f"[DEBUG] AUDIO: {uri}")
 
-    #
-    # 2. TV: DASH / HLS delivery
-    #
-    for elem in service.iter():
+                    return uri, "radio"
 
-        tag = elem.tag.split("}")[-1]
+        # ----------------------
+        # 2. HLS radio (RTÉ / Saorview)
+        # ----------------------
+        for elem in instance.iter():
 
-        if tag not in (
-            "ServiceInstance",
-            "DASHDeliveryParameters",
-            "HLSDeliveryParameters",
-            "HTTPLSDeliveryParameters",
-        ):
-            continue
+            if localname(elem.tag) == "OtherDeliveryParameters":
 
-        #
-        # Look for URI elements inside TV blocks
-        #
-        for child in elem.iter():
+                for child in elem.iter():
 
-            child_tag = child.tag.split("}")[-1]
+                    if is_uri_tag(child.tag):
 
-            if child_tag != "URI":
-                continue
+                        if child.text and child.text.strip():
 
-            if child.text and child.text.strip():
+                            uri = child.text.strip()
 
-                uri = child.text.strip()
+                            if uri.startswith("http"):
 
-                if debug:
-                    print(f"[DEBUG] TV stream found: {uri}")
+                                if debug:
+                                    print(f"[DEBUG] RADIO HLS: {uri}")
 
-                return uri, "video"
+                                return uri, "radio"
 
-    if debug:
-        print("[DEBUG] No stream URI found")
+        # ----------------------
+        # 3. TV streams
+        # ----------------------
+        for elem in instance.iter():
+
+            if localname(elem.tag) in (
+                "DVBTDeliveryParameters",
+                "DASHDeliveryParameters",
+                "HLSDeliveryParameters",
+                "HTTPLSDeliveryParameters",
+            ):
+
+                for child in elem.iter():
+
+                    if is_uri_tag(child.tag):
+
+                        if child.text and child.text.strip():
+
+                            uri = child.text.strip()
+
+                            if debug:
+                                print(f"[DEBUG] TV: {uri}")
+
+                            return uri, "video"
 
     return None, None
 
-def find_logo(service, debug=False):
-    """
-    Locate preferred channel logo URI.
 
-    Preference order:
-      1. MediaUri contentType="image/png"
-      2. Any MediaUri
-    """
+# ----------------------------
+# Extract services
+# ----------------------------
+def extract_services(xml_data, debug=False, lcn_offset=0):
 
-    fallback_logo = None
+    root = ET.fromstring(xml_data)
 
-    #
-    # Search all MediaUri elements
-    #
-    for elem in service.iter():
+    lcn_map = build_lcn_table(root)
 
-        tag = elem.tag.split("}")[-1]
+    services = []
 
-        if tag != "MediaUri":
+    for service in root.iter():
+
+        if localname(service.tag) != "Service":
             continue
 
-        if not elem.text:
-            continue
+        name = find_service_name(service)
+        logo = find_logo(service)
 
-        uri = elem.text.strip()
+        unique_id = None
+
+        for e in service.iter():
+            if localname(e.tag) == "UniqueIdentifier":
+                unique_id = (e.text or "").strip()
+
+        lcn = lcn_map.get(unique_id)
+
+        # ----------------------
+        # Apply LCN offset (FIXED)
+        # ----------------------
+        if lcn is not None:
+            try:
+                lcn = str(int(lcn) + lcn_offset)
+            except ValueError:
+                pass
+
+        uri, stream_type = find_stream_uri(service, debug=debug)
 
         if not uri:
             continue
 
-        #
-        # Read contentType attribute
-        #
-        content_type = None
-
-        for attr_name, attr_value in elem.attrib.items():
-
-            clean_attr = attr_name.split("}")[-1]
-
-            if clean_attr == "contentType":
-
-                content_type = attr_value.strip()
-                break
-
-        if debug:
-            print(
-                f"[DEBUG] MediaUri="
-                f"{uri} "
-                f"contentType={content_type}"
-            )
-
-        #
-        # Preferred PNG logo
-        #
-        if content_type == "image/png":
-
-            if debug:
-                print(
-                    f"[DEBUG] Selected PNG logo: "
-                    f"{uri}"
-                )
-
-            return uri
-
-        #
-        # Save fallback
-        #
-        if not fallback_logo:
-            fallback_logo = uri
-
-    if fallback_logo and debug:
-        print(
-            f"[DEBUG] Using fallback logo: "
-            f"{fallback_logo}"
-        )
-
-    return fallback_logo or ""
-
-def extract_services(xml_data, lcn_offset=0, debug=False):
-    """
-    Extract IPTV-compatible services from DVB-I XML.
-    """
-
-    root = ET.fromstring(xml_data)
-
-    #
-    # Build global LCN lookup
-    #
-    lcn_map = build_lcn_table(root, debug=debug)
-
-    services = []
-
-    #
-    # Find all Service elements
-    #
-    for service in root.iter():
-
-        tag = service.tag.split("}")[-1]
-
-        if tag != "Service":
-            continue
-
-        #
-        # Channel name
-        #
-        name = find_first_name(service, debug=debug)
-
-        #
-        # tvg-id
-        #
-        service_id = (
-            get_first_text(service, ".//dvb:UniqueIdentifier")
-            or sanitize_tvg_id(name)
-        )
-
-        #
-        # Group/category
-        #
-        group_title = (
-            get_first_text(service, ".//dvb:Category")
-            or "DVB-I"
-        )
-
-        #
-        # Logo URI
-        #
-        logo = find_logo(service, debug=debug)
-
-        #
-        # Service UniqueIdentifier
-        #
-        unique_id = get_first_text(
-            service,
-            ".//dvb:UniqueIdentifier"
-        )
-
-        #
-        # Extract UniqueIdentifier
-        #
-        unique_id = None
-
-        for elem in service.iter():
-
-            tag = elem.tag.split("}")[-1]
-
-            if tag != "UniqueIdentifier":
-                continue
-
-            if elem.text and elem.text.strip():
-
-                unique_id = elem.text.strip()
-
-                break
-
-        #
-        # Exact LCN lookup
-        #
-        lcn = None
-
-        if unique_id:
-
-            lcn = lcn_map.get(unique_id)
-
-            if debug:
-                print(
-                    f"[DEBUG] Service={name} "
-                    f"UniqueIdentifier={unique_id} "
-                    f"LCN={lcn}"
-                )
-
-        #
-        # Apply optional offset
-        #
-        if lcn is not None:
-
-            try:
-                lcn = str(int(lcn) + lcn_offset)
-
-            except ValueError:
-                pass
-
-        #
-        # DASH URI
-        #
-        stream_uri, stream_type = find_stream_uri(
-            service,
-            debug=debug
-        )
-
-        #
-        # Skip services without URI
-        #
-        if not stream_uri:
-
-            if debug:
-                print(f"[DEBUG] Skipping service: {name}")
-
-            continue
-
-        #
-        # Add service
-        #
         services.append({
             "name": name,
-            "tvg_id": service_id,
-            "group": group_title,
+            "tvg_id": unique_id or sanitize_tvg_id(name),
             "logo": logo,
             "lcn": lcn,
-            "url": stream_uri,
-            "stream_type": stream_type,
+            "url": uri,
+            "type": stream_type,
         })
 
-        if debug:
-            print(
-                f"[DEBUG] Added service: "
-                f"{name} [{stream_type}] -> {stream_uri}"
-            )
-
-    #
-    # Sort by channel number
-    #
-    def lcn_sort_key(service):
-
+    # sort by LCN
+    def sort_key(s):
         try:
-            return int(service["lcn"])
-
-        except (TypeError, ValueError):
+            return int(s["lcn"])
+        except:
             return 999999
 
-    services.sort(key=lcn_sort_key)
-
-    return services
+    return sorted(services, key=sort_key)
 
 
-def write_m3u8(services, output_file):
-    """
-    Write IPTV-compatible M3U8 playlist.
-    """
+# ----------------------------
+# Write M3U
+# ----------------------------
+def write_m3u(services, out):
 
-    with open(output_file, "w", encoding="utf-8") as f:
+    with open(out, "w", encoding="utf-8") as f:
 
         f.write("#EXTM3U\n")
 
-        for svc in services:
+        for s in services:
 
-            group_name = svc["group"]
-
-            #
-            # Put radio services into Radio group
-            #
-            if svc["stream_type"] == "radio":
-                group_name = "Radio"
+            group = "Radio" if s["type"] == "radio" else "DVB-I"
 
             attrs = [
-                f'tvg-id="{svc["tvg_id"]}"',
-                f'tvg-name="{svc["name"]}"',
-                f'group-title="{group_name}"',
+                f'tvg-id="{s["tvg_id"]}"',
+                f'tvg-name="{s["name"]}"',
+                f'group-title="{group}"'
             ]
 
-            #
-            # Optional logo
-            #
-            if svc["logo"]:
-                attrs.append(
-                    f'tvg-logo="{svc["logo"]}"'
-                )
+            if s["logo"]:
+                attrs.append(f'tvg-logo="{s["logo"]}"')
 
-            #
-            # Optional channel number
-            #
-            if svc["lcn"]:
-                attrs.append(
-                    f'tvg-chno="{svc["lcn"]}"'
-                )
+            if s["lcn"]:
+                attrs.append(f'tvg-chno="{s["lcn"]}"')
 
-            extinf = (
-                "#EXTINF:-1 "
-                + " ".join(attrs)
-                + f',{svc["name"]}'
-            )
-
-            f.write(extinf + "\n")
-            f.write(svc["url"] + "\n")
+            f.write("#EXTINF:-1 " + " ".join(attrs) + f",{s['name']}\n")
+            f.write(s["url"] + "\n")
 
 
+# ----------------------------
+# Main
+# ----------------------------
 def main():
 
-    parser = argparse.ArgumentParser(
-        description=(
-            "Convert DVB-I Service List "
-            "to IPTV-compatible M3U8 playlist"
-        )
-    )
+    ap = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "source",
-        help="DVB-I XML URL or filename"
-    )
+    ap.add_argument("source")
+    ap.add_argument("output")
+    ap.add_argument("--debug", action="store_true")
 
-    parser.add_argument(
-        "output",
-        help="Output M3U8 filename"
-    )
-
-    parser.add_argument(
+    # RESTORED FEATURE
+    ap.add_argument(
         "--lcn-offset",
         type=int,
         default=0,
-        help="Add offset to channel numbers"
+        help="Offset applied to LCN values (e.g. 200 makes 9 → 209)"
     )
 
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable DVB-I parsing debug output"
+    args = ap.parse_args()
+
+    xml = load_xml(args.source)
+
+    services = extract_services(
+        xml,
+        debug=args.debug,
+        lcn_offset=args.lcn_offset
     )
 
-    args = parser.parse_args()
+    write_m3u(services, args.output)
 
-    try:
-
-        if args.debug:
-            print(f"[DEBUG] Loading XML: {args.source}")
-
-        xml_data = load_xml(args.source)
-
-        if args.debug:
-            print(
-                f"[DEBUG] Loaded XML bytes: "
-                f"{len(xml_data)}"
-            )
-
-        services = extract_services(
-            xml_data,
-            lcn_offset=args.lcn_offset,
-            debug=args.debug
-        )
-
-        if not services:
-
-            print(
-                "No DVB-I DASH services found.",
-                file=sys.stderr
-            )
-
-            sys.exit(2)
-
-        write_m3u8(services, args.output)
-
-        print(
-            f"Wrote {len(services)} channels "
-            f"to {args.output}"
-        )
-
-    except requests.RequestException as e:
-
-        print(
-            f"Network error: {e}",
-            file=sys.stderr
-        )
-
-        sys.exit(1)
-
-    except ET.ParseError as e:
-
-        print(
-            f"XML parse error: {e}",
-            file=sys.stderr
-        )
-
-        sys.exit(1)
-
-    except FileNotFoundError as e:
-
-        print(
-            f"File error: {e}",
-            file=sys.stderr
-        )
-
-        sys.exit(1)
-
-    except Exception as e:
-
-        print(
-            f"Error: {e}",
-            file=sys.stderr
-        )
-
-        sys.exit(1)
+    print(f"Wrote {len(services)} channels → {args.output}")
 
 
 if __name__ == "__main__":
