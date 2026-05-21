@@ -170,46 +170,74 @@ def build_lcn_table(root, debug=False):
 
 def find_stream_uri(service, debug=False):
     """
-    Locate stream URI for:
-      - DASH video streams
-      - HLS radio streams
-      - Generic DVB-I delivery parameters
+    Locate DVB-I stream URI and determine stream type.
+
+    Stream type detection:
+      - radio: OtherDeliveryParameters == hls_url:m3u8RefType
+      - video: everything else
 
     Returns:
         (stream_url, stream_type)
     """
 
     #
-    # Supported delivery parameter element names
+    # Default stream type
     #
-    delivery_types = [
-        "DASHDeliveryParameters",
-        "HTTPLSDeliveryParameters",
-        "HLSDeliveryParameters",
-    ]
+    stream_type = "video"
 
     #
-    # Walk all XML elements
+    # Detect radio via OtherDeliveryParameters
     #
-    for delivery in service.iter():
+    for elem in service.iter():
 
-        delivery_tag = delivery.tag.split("}")[-1]
+        tag = elem.tag.split("}")[-1]
 
-        if delivery_tag not in delivery_types:
+        if tag != "OtherDeliveryParameters":
             continue
+
+        if not elem.text:
+            continue
+
+        value = elem.text.strip()
 
         if debug:
             print(
-                f"\n[DEBUG] Found delivery type: "
-                f"{delivery_tag}"
+                f"[DEBUG] OtherDeliveryParameters="
+                f"{value}"
             )
+
+        #
+        # Radio HLS stream
+        #
+        if value == "hls_url:m3u8RefType":
+
+            stream_type = "radio"
+
+            if debug:
+                print(
+                    "[DEBUG] Detected RADIO stream "
+                    "from OtherDeliveryParameters"
+                )
+
+    #
+    # Search all ServiceInstance elements
+    #
+    for instance in service.iter():
+
+        tag = instance.tag.split("}")[-1]
+
+        if tag != "ServiceInstance":
+            continue
+
+        if debug:
+            print("\n[DEBUG] Found ServiceInstance")
 
         #
         # Dump subtree
         #
         if debug:
 
-            for elem in delivery.iter():
+            for elem in instance.iter():
 
                 elem_tag = elem.tag.split("}")[-1]
 
@@ -225,51 +253,47 @@ def find_stream_uri(service, debug=False):
                 )
 
         #
-        # Search recursively for URI
+        # Find URI elements
         #
-        for elem in delivery.iter():
+        for elem in instance.iter():
 
             elem_tag = elem.tag.split("}")[-1]
 
             if elem_tag != "URI":
                 continue
 
-            if elem.text and elem.text.strip():
+            if not elem.text:
+                continue
 
-                uri = elem.text.strip()
+            uri = elem.text.strip()
 
-                #
-                # Determine stream type
-                #
-                stream_type = "video"
+            if not uri:
+                continue
 
-                if delivery_tag in (
-                    "HTTPLSDeliveryParameters",
-                    "HLSDeliveryParameters",
-                ):
-                    stream_type = "radio"
+            #
+            # Accept DASH or HLS streams
+            #
+            lower_uri = uri.lower()
 
-                #
-                # Extra radio detection
-                #
-                if (
-                    ".m3u8" in uri.lower()
-                    and "radio" in uri.lower()
-                ):
-                    stream_type = "radio"
+            if not (
+                ".mpd" in lower_uri
+                or ".m3u8" in lower_uri
+            ):
+                continue
 
-                if debug:
-                    print(
-                        f"[DEBUG] Found stream URI: "
-                        f"{uri}"
-                    )
+            if debug:
 
-                    print(
-                        f"[DEBUG] Stream type: "
-                        f"{stream_type}"
-                    )
+                print(
+                    f"[DEBUG] Found stream URI: "
+                    f"{uri}"
+                )
 
-                return uri, stream_type
+                print(
+                    f"[DEBUG] Stream type: "
+                    f"{stream_type}"
+                )
+
+            return uri, stream_type
 
     if debug:
         print("[DEBUG] No stream URI found")
