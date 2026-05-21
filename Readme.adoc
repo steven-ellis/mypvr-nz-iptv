@@ -5,7 +5,9 @@ built in IPTV streamer at present
 
 Reference
 
-- OpenMedia's TRAC ticket #1093
+- OpenMedia's TRAC tickets
+ - #1093 External Recorder
+ - #1419 DVB-I analysis
 - MythTV link:https://code.mythtv.org/trac/ticket/13608[#13608 IPTV Streaming issues with AES-128 encryption]
 
 Hence I personally utilse the 
@@ -54,6 +56,11 @@ as a link:https://www.mythtv.org/wiki/IPTV_Encoders_as_a_Capture_Device#Add_the_
 and specify the local location of your m3u8 file, or you can access the RAW hosted on github via
 
 - https://raw.githubusercontent.com/steven-ellis/mypvr-nz-iptv/main/internal/iptv-nz.m3u8[https://raw.githubusercontent.com/steven-ellis/mypvr-nz-iptv/main/internal/iptv-nz.m3u8]
+
+== DVB-I Analysis
+
+Freeview NZ is planning on link:https://www.advanced-television.com/2026/05/18/freeview-nextgen-launching-in-new-zealand/[adopting DVB-I late 2026]
+which potentially provides a general way to get the DASH streams needed for IPTV recording.
 
 == EPG Feed
 
