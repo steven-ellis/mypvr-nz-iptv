@@ -108,27 +108,65 @@ def find_first_name(service, debug=False):
 
     return "Unknown Channel"
 
-def find_lcn(service):
+def build_lcn_table(root, debug=False):
     """
-    Locate Logical Channel Number.
+    Build mapping:
+        UniqueIdentifier -> channelNumber
     """
 
-    lcn_paths = [
-        ".//dvb:LCN",
-        ".//dvb:LogicalChannelNumber",
-        ".//types:LCN",
-        ".//types:LogicalChannelNumber",
-    ]
+    lcn_map = {}
 
-    for xpath in lcn_paths:
+    #
+    # Walk XML tree
+    #
+    for elem in root.iter():
 
-        value = get_first_text(service, xpath)
+        tag = elem.tag.split("}")[-1]
 
-        if value:
-            return value
+        #
+        # Match only LCN elements
+        #
+        if tag != "LCN":
+            continue
 
-    return None
+        service_ref = None
+        channel_number = None
 
+        #
+        # Extract attributes
+        #
+        for attr_name, attr_value in elem.attrib.items():
+
+            clean_attr = attr_name.split("}")[-1]
+
+            #
+            # serviceRef attribute
+            #
+            if clean_attr == "serviceRef":
+
+                service_ref = attr_value.strip()
+
+            #
+            # channelNumber attribute
+            #
+            elif clean_attr == "channelNumber":
+
+                channel_number = attr_value.strip()
+
+        #
+        # Store mapping
+        #
+        if service_ref and channel_number:
+
+            lcn_map[service_ref] = channel_number
+
+            if debug:
+                print(
+                    f"[DEBUG] LCN MAP: "
+                    f"{service_ref} -> {channel_number}"
+                )
+
+    return lcn_map
 
 def find_dash_uri(service, debug=False):
     """
@@ -201,6 +239,11 @@ def extract_services(xml_data, lcn_offset=0, debug=False):
 
     root = ET.fromstring(xml_data)
 
+    #
+    # Build global LCN lookup
+    #
+    lcn_map = build_lcn_table(root, debug=debug)
+
     services = []
 
     #
@@ -243,9 +286,46 @@ def extract_services(xml_data, lcn_offset=0, debug=False):
         )
 
         #
-        # LCN
+        # Service UniqueIdentifier
         #
-        lcn = find_lcn(service)
+        unique_id = get_first_text(
+            service,
+            ".//dvb:UniqueIdentifier"
+        )
+
+        #
+        # Extract UniqueIdentifier
+        #
+        unique_id = None
+
+        for elem in service.iter():
+
+            tag = elem.tag.split("}")[-1]
+
+            if tag != "UniqueIdentifier":
+                continue
+
+            if elem.text and elem.text.strip():
+
+                unique_id = elem.text.strip()
+
+                break
+
+        #
+        # Exact LCN lookup
+        #
+        lcn = None
+
+        if unique_id:
+
+            lcn = lcn_map.get(unique_id)
+
+            if debug:
+                print(
+                    f"[DEBUG] Service={name} "
+                    f"UniqueIdentifier={unique_id} "
+                    f"LCN={lcn}"
+                )
 
         #
         # Apply optional offset
