@@ -300,6 +300,83 @@ def find_stream_uri(service, debug=False):
 
     return None, None
 
+def find_logo(service, debug=False):
+    """
+    Locate preferred channel logo URI.
+
+    Preference order:
+      1. MediaUri contentType="image/png"
+      2. Any MediaUri
+    """
+
+    fallback_logo = None
+
+    #
+    # Search all MediaUri elements
+    #
+    for elem in service.iter():
+
+        tag = elem.tag.split("}")[-1]
+
+        if tag != "MediaUri":
+            continue
+
+        if not elem.text:
+            continue
+
+        uri = elem.text.strip()
+
+        if not uri:
+            continue
+
+        #
+        # Read contentType attribute
+        #
+        content_type = None
+
+        for attr_name, attr_value in elem.attrib.items():
+
+            clean_attr = attr_name.split("}")[-1]
+
+            if clean_attr == "contentType":
+
+                content_type = attr_value.strip()
+                break
+
+        if debug:
+            print(
+                f"[DEBUG] MediaUri="
+                f"{uri} "
+                f"contentType={content_type}"
+            )
+
+        #
+        # Preferred PNG logo
+        #
+        if content_type == "image/png":
+
+            if debug:
+                print(
+                    f"[DEBUG] Selected PNG logo: "
+                    f"{uri}"
+                )
+
+            return uri
+
+        #
+        # Save fallback
+        #
+        if not fallback_logo:
+            fallback_logo = uri
+
+    if fallback_logo and debug:
+        print(
+            f"[DEBUG] Using fallback logo: "
+            f"{fallback_logo}"
+        )
+
+    return fallback_logo or ""
+
 def extract_services(xml_data, lcn_offset=0, debug=False):
     """
     Extract IPTV-compatible services from DVB-I XML.
@@ -348,10 +425,7 @@ def extract_services(xml_data, lcn_offset=0, debug=False):
         #
         # Logo URI
         #
-        logo = (
-            get_first_text(service, ".//dvb:MediaUri")
-            or ""
-        )
+        logo = find_logo(service, debug=debug)
 
         #
         # Service UniqueIdentifier
