@@ -168,34 +168,48 @@ def build_lcn_table(root, debug=False):
 
     return lcn_map
 
-def find_dash_uri(service, debug=False):
+def find_stream_uri(service, debug=False):
     """
-    Locate DASH manifest URI from DVB-I structures.
-    Uses namespace-agnostic recursive matching.
+    Locate stream URI for:
+      - DASH video streams
+      - HLS radio streams
+      - Generic DVB-I delivery parameters
+
+    Returns:
+        (stream_url, stream_type)
     """
 
     #
-    # Walk every element
+    # Supported delivery parameter element names
     #
-    for dash in service.iter():
+    delivery_types = [
+        "DASHDeliveryParameters",
+        "HTTPLSDeliveryParameters",
+        "HLSDeliveryParameters",
+    ]
 
-        #
-        # Ignore namespace
-        #
-        tag = dash.tag.split("}")[-1]
+    #
+    # Walk all XML elements
+    #
+    for delivery in service.iter():
 
-        if tag != "DASHDeliveryParameters":
+        delivery_tag = delivery.tag.split("}")[-1]
+
+        if delivery_tag not in delivery_types:
             continue
 
         if debug:
-            print("\n[DEBUG] Found DASHDeliveryParameters")
+            print(
+                f"\n[DEBUG] Found delivery type: "
+                f"{delivery_tag}"
+            )
 
         #
         # Dump subtree
         #
         if debug:
 
-            for elem in dash.iter():
+            for elem in delivery.iter():
 
                 elem_tag = elem.tag.split("}")[-1]
 
@@ -205,12 +219,15 @@ def find_dash_uri(service, debug=False):
                     else ""
                 )
 
-                print(f"[DEBUG] TAG={elem_tag} TEXT={text}")
+                print(
+                    f"[DEBUG] TAG={elem_tag} "
+                    f"TEXT={text}"
+                )
 
         #
-        # Search recursively for URI elements
+        # Search recursively for URI
         #
-        for elem in dash.iter():
+        for elem in delivery.iter():
 
             elem_tag = elem.tag.split("}")[-1]
 
@@ -221,16 +238,43 @@ def find_dash_uri(service, debug=False):
 
                 uri = elem.text.strip()
 
-                if debug:
-                    print(f"[DEBUG] Found DASH URI: {uri}")
+                #
+                # Determine stream type
+                #
+                stream_type = "video"
 
-                return uri
+                if delivery_tag in (
+                    "HTTPLSDeliveryParameters",
+                    "HLSDeliveryParameters",
+                ):
+                    stream_type = "radio"
+
+                #
+                # Extra radio detection
+                #
+                if (
+                    ".m3u8" in uri.lower()
+                    and "radio" in uri.lower()
+                ):
+                    stream_type = "radio"
+
+                if debug:
+                    print(
+                        f"[DEBUG] Found stream URI: "
+                        f"{uri}"
+                    )
+
+                    print(
+                        f"[DEBUG] Stream type: "
+                        f"{stream_type}"
+                    )
+
+                return uri, stream_type
 
     if debug:
-        print("[DEBUG] No DASH URI found")
+        print("[DEBUG] No stream URI found")
 
-    return None
-
+    return None, None
 
 def extract_services(xml_data, lcn_offset=0, debug=False):
     """
@@ -341,12 +385,15 @@ def extract_services(xml_data, lcn_offset=0, debug=False):
         #
         # DASH URI
         #
-        dash_uri = find_dash_uri(service, debug=debug)
+        stream_uri, stream_type = find_stream_uri(
+            service,
+            debug=debug
+        )
 
         #
         # Skip services without URI
         #
-        if not dash_uri:
+        if not stream_uri:
 
             if debug:
                 print(f"[DEBUG] Skipping service: {name}")
@@ -362,13 +409,14 @@ def extract_services(xml_data, lcn_offset=0, debug=False):
             "group": group_title,
             "logo": logo,
             "lcn": lcn,
-            "url": dash_uri,
+            "url": stream_uri,
+            "stream_type": stream_type,
         })
 
         if debug:
             print(
                 f"[DEBUG] Added service: "
-                f"{name} -> {dash_uri}"
+                f"{name} [{stream_type}] -> {stream_uri}"
             )
 
     #
@@ -398,10 +446,18 @@ def write_m3u8(services, output_file):
 
         for svc in services:
 
+            group_name = svc["group"]
+
+            #
+            # Put radio services into Radio group
+            #
+            if svc["stream_type"] == "radio":
+                group_name = "Radio"
+
             attrs = [
                 f'tvg-id="{svc["tvg_id"]}"',
                 f'tvg-name="{svc["name"]}"',
-                f'group-title="{svc["group"]}"',
+                f'group-title="{group_name}"',
             ]
 
             #
